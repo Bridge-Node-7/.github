@@ -1,0 +1,29 @@
+name: Bug report
+description: Report a public, non-security defect
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include personal data or secrets. For vulnerabilities, use GitHub Security Advisories (vulnerability reporting), not a public bug report.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Observed vs expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: v0.0.0 or commit SHA
+    validations:
+      required: true

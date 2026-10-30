@@ -1,0 +1,19 @@
+name: Improvement
+description: Suggest a documentation or product improvement
+title: "improvement: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposal
+      description: What should change, and why it matters for public users
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Out of scope
+      description: What this should not change
+    validations:
+      required: false
