@@ -1,17 +1,12 @@
 ## Summary
 
-<!-- What does this change, and why? -->
+Describe the change in public product terms.
 
-## Type of change
+## Validation
 
-- [ ] `feat`
-- [ ] `fix`
-- [ ] `docs`
-- [ ] `ci` / `chore` / `security` / other
+List checks run and their results.
 
-## Checklist
-
-- [ ] Conventional commit title
-- [ ] No personal data or secrets in the diff
-- [ ] Tests or validation updated when behavior changes
-- [ ] I did not hand-edit version numbers (release-please owns releases)
+- [ ] No personal data, secrets, or nonpublic context
+- [ ] Claims and reuse rights remain within scope
+- [ ] Tests cover changed behavior
+- [ ] Release versions are unchanged unless this is a release PR
