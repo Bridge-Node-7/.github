@@ -1,0 +1,78 @@
+name: Validate community defaults
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: community-validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate community documents and issue forms
+        run: |
+          ruby -ryaml -ruri <<'RUBY'
+          def require_condition(condition, message)
+            abort(message) unless condition
+          end
+          def nonempty(value)
+            value.is_a?(String) && !value.strip.empty?
+          end
+
+          docs = %w[README.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md .github/PULL_REQUEST_TEMPLATE.md]
+          docs.each do |path|
+            content = File.read(path, encoding: 'UTF-8')
+            require_condition(content.valid_encoding? && content.match?(/^\#{1,6} +\S/), "Missing valid Markdown heading: #{path}")
+            require_condition(!content.match?(/^(<<<<<<< |=======\s*$|>>>>>>> )/), "Unresolved conflict: #{path}")
+          end
+
+          forms = Dir.glob('.github/ISSUE_TEMPLATE/*.yml').reject { |p| File.basename(p) == 'config.yml' }
+          require_condition(!forms.empty?, 'No issue forms')
+          forms.each do |path|
+            form = YAML.safe_load_file(path)
+            require_condition(form.is_a?(Hash) && nonempty(form['name']) && nonempty(form['description']), "Invalid form metadata: #{path}")
+            body = form['body']
+            require_condition(body.is_a?(Array) && !body.empty?, "Missing form body: #{path}")
+            ids = []
+            required_field = false
+            body.each do |field|
+              require_condition(field.is_a?(Hash) && nonempty(field['type']) && field['attributes'].is_a?(Hash), "Invalid field: #{path}")
+              if field['type'] == 'markdown'
+                require_condition(nonempty(field['attributes']['value']), "Empty guidance: #{path}")
+                next
+              end
+              id = field['id']
+              require_condition(nonempty(id) && id.match?(/\A[A-Za-z0-9_-]+\z/) && !ids.include?(id), "Invalid or duplicate field ID: #{path}")
+              require_condition(nonempty(field['attributes']['label']), "Missing field label: #{path}")
+              ids << id
+              required_field ||= field.dig('validations', 'required') == true
+            end
+            require_condition(required_field, "No required response field: #{path}")
+          end
+
+          config = YAML.safe_load_file('.github/ISSUE_TEMPLATE/config.yml')
+          require_condition(config.is_a?(Hash) && config['blank_issues_enabled'] == false, 'Unstructured issues must remain disabled')
+          links = config['contact_links']
+          require_condition(links.is_a?(Array) && !links.empty?, 'Missing contact links')
+          links.each do |link|
+            require_condition(link.is_a?(Hash) && nonempty(link['name']) && nonempty(link['about']) && nonempty(link['url']), 'Invalid contact link')
+            uri = URI.parse(link['url'])
+            require_condition(uri.is_a?(URI::HTTPS) && nonempty(uri.host) && uri.userinfo.nil?, 'Contact links must use HTTPS without embedded credentials')
+          end
+          require_condition(links.any? { |link| link['url'] == 'https://github.com/Bridge-Node-7/Bridge-Node-7/blob/main/SECURITY.md' }, 'Private vulnerability reporting route missing')
+          puts "PASS: #{docs.size} community documents, #{forms.size} issue forms, #{links.size} contact links"
+          RUBY
